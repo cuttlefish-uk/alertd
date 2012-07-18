@@ -20,10 +20,10 @@ var flush_stats = function alert_flush(ts, stats) {
 
   alerts.monitors().forEach(function(monitor) {
     if (stats.counters[monitor.name] !== undefined) {
-      monitor.check(stats.counters[k]);
+      monitor.check(stats.counters[monitor.name]);
     }
-    else if (stats.gauges[k] !== undefined) {
-      monitor.check(stats.gauges[k]);
+    else if (stats.gauges[monitor.name] !== undefined) {
+      monitor.check(stats.gauges[monitor.name]);
     }
   });
 

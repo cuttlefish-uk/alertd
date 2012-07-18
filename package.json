@@ -1,0 +1,17 @@
+{
+  "name": "alertd",
+  "description": "A simple, lightweight monitoring and alerting daemon",
+  "author": "cuttlefish.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cuttlefish-uk/alertd.git"
+  },
+  "version": "0.1.0",
+  "dependencies": {
+    "emailjs": ">=0.3.0",
+    "node-prowl": ">=0.1.4"
+  },
+  "engine": {
+    "node" : ">=0.8"
+  }
+}

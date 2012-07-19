@@ -24,17 +24,48 @@ exports.http_200 = function(res, on_error) {
   }
 };
 
-exports.value = function(res, on_error) {
+exports.value_over = function(res, on_error) {
   if (typeof this.config.critical !== undefined) {
-    if (res >= this.config.critical) {
-      return on_error('critical', this.name + ' exceeds ' + this.config.critical);
+    if (res > this.config.critical) {
+      return on_error('critical', this.name + ' is ' + res + ' (has exceeded ' + this.config.critical + ')');
     }
   }
   if (typeof this.config.warning !== undefined) {
-    if (res >= this.config.warning) {
-      return on_error('warning', this.name + ' exceeds ' + this.config.warning);
+    if (res > this.config.warning) {
+      return on_error('warning', this.name + ' is ' + res + ' (has exceeded ' + this.config.warning + ')');
     }
   }
   on_error('ok', this.name + ' ok');
 };
+exports.value_gt = exports.value_over;
+
+exports.value_under = function(res, on_error) {
+  if (typeof this.config.critical !== undefined) {
+    if (res < this.config.critical) {
+      return on_error('critical', this.name + ' is ' + res + ' (has fallen below ' + this.config.critical + ')');
+    }
+  }
+  if (typeof this.config.warning !== undefined) {
+    if (res < this.config.warning) {
+      return on_error('warning', this.name + ' is ' + res + ' (has fallen below ' + this.config.warning + ')');
+    }
+  }
+  on_error('ok', this.name + ' ok');
+};
+exports.value_lt = exports.value_under;
+
+exports.value_equal = function(res, on_error) {
+  if (typeof this.config.critical !== undefined) {
+    if (res == this.config.critical) {
+      return on_error('critical', this.name + ' is ' + this.config.critical);
+    }
+  }
+  if (typeof this.config.warning !== undefined) {
+    if (res == this.config.warning) {
+      return on_error('warning', this.name + ' is ' + this.config.warning);
+    }
+  }
+  on_error('ok', this.name + ' ok');
+};
+exports.value_eq = exports.value_equal;
 

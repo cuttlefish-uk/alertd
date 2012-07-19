@@ -33,10 +33,10 @@ Optional Variables:
      * to be pushed to alertd).
      */
     'srv.s1.load5': {
-      'check': 'value', // check the value of this metric
+      'check': 'value_gt', // check whether the value of this metric exceeds thresholds
       'contact': 'dougal', // notify dougal
 
-	  // the value checker supports the following 2 options:
+	  // the value checkers (gt, lt, eq) support the following 2 threshold options:
       'warning': 2, // warn if >= 2
       'critical': 5, // send critical alert if >= 5
     },

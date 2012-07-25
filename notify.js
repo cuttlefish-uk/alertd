@@ -1,8 +1,13 @@
 
 var email = require('emailjs')
-, Prowl = require('./node_modules/node-prowl/lib/prowl')
 , url = require('url')
 , util = require('util')
+, Prowl
+
+try {
+  Prowl = require('node-prowl/lib')
+}
+catch(e) {}
 
 exports.console = function(contact, value, level, error) {
   util.log(level + ': ' + error);
@@ -25,6 +30,10 @@ exports.email = function(contact, value, level, error) {
 };
 
 exports.prowl = function(contact, value, level, error) {
+  if (!Prowl) {
+    console.log("node-prowl module not available");
+    return;
+  }
   var key = contact.api_key;
   var prowl = new Prowl(key);
   prowl.push(level + ': ' + this.name, this.app_config.application_name||'alertd', {

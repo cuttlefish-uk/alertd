@@ -39,6 +39,7 @@ exports.http = function(callback) {
   if (!request.headers['User-Agent']) {
     request.headers['User-Agent'] = this.app_config.user_agent || 'alertd/0.1.0';
   }
+  var self = this;
   var start = new Date;
   var client = http.request(request, function(res) {
     res.setEncoding('utf8');
@@ -47,7 +48,10 @@ exports.http = function(callback) {
       body += chunk;
     });
     res.on('end', function() {
-      callback({statusCode:res.statusCode, headers:res.headers, body:body, duration:((new Date).getTime() - start.getTime()) / 1000});
+      var duration = (new Date).getTime() - start.getTime();
+      self.stat('timing', duration);
+      self.stat('gauge', duration);
+      callback({statusCode:res.statusCode, headers:res.headers, body:body, duration:duration});
     });
   });
   if (request.body) client.write(request.body);

@@ -9,8 +9,8 @@ exports.http = function(res, on_error) {
       return on_error('critical', this.name + " body doesn't match " + this.config.bodyMatch);
     }
   }
-  if (this.config.duration !== undefined && res.duration >= this.config.duration) {
-    return on_error('warning', this.name + " took " + res.duration + "s (warning at " + this.config.duration + "s)");
+  if (this.config.duration !== undefined && res.duration / 1000 >= this.config.duration) {
+    return on_error('warning', this.name + " took " + (res.duration / 1000) + "s (warning at " + this.config.duration + "s)");
   }
   on_error('ok', this.name + ' ok');
 };

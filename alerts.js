@@ -4,6 +4,21 @@ var dgram = require('dgram')
 , checks  = require('./checks')
 , notify  = require('./notify')
 , fetch   = require('./fetch')
+, StatsdClient;
+
+try {
+  StatsdClient = require('statsd-client')
+}
+catch(e) {}
+
+var _statsd_client = null;
+
+var statsd_client = function(config) {
+  if (_statsd_client === null && StatsdClient && config.statsd) {
+    _statsd_client = new StatsdClient(config.statsd);
+  }
+  return _statsd_client;
+};
 
 var array_unique = function(array) {
   var a = [];
@@ -70,6 +85,7 @@ Monitor.prototype.pull = function() {
 
 Monitor.prototype.check = function(value) {
   var self = this;
+  this.app_stat('alertd_check', 'increment', 1);
   this.check_value(value, function(level, error) {
     if (level !== self.state || (level !== 'ok' && self.last_notification_time < (new Date).getTime() - (1000 * (self.config.contact_repeat_rate||3600)))) {
       var contacts = self.get_contacts();
@@ -84,6 +100,7 @@ Monitor.prototype.check = function(value) {
         method(contact, value, level, error);
       });
 
+      this.app_stat('alertd_notify_' + level, 'increment', 1);
       ++self.stats[level];
       self.last_notification_time = (new Date).getTime();
       self.state = level;
@@ -120,6 +137,20 @@ Monitor.prototype.get_contacts = function(optional_property) {
     contacts = contacts.map(function(c) {return c[optional_property];}).filter(function(c) {return c !== undefined;});
   }
   return contacts;
+};
+
+Monitor.prototype.app_stat = function(metric, kind, value) {
+  var statsd = statsd_client(this.app_config);
+  if (statsd) {
+    metric = (this.app_config.statsd.key || 'alertd') + '.' + metric;
+    statsd[kind](metric, value);
+  }
+};
+
+Monitor.prototype.stat = function(kind, value) {
+  if (this.config.stat) {
+    this.app_stat(this.config.stat, kind, value);
+  }
 };
 
 var monitor_list = [];

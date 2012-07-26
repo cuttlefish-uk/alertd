@@ -4,6 +4,7 @@ var dgram = require('dgram')
 , checks  = require('./checks')
 , notify  = require('./notify')
 , fetch   = require('./fetch')
+, helpers = require('./helpers')
 , StatsdClient;
 
 try {
@@ -18,20 +19,6 @@ var statsd_client = function(config) {
     _statsd_client = new StatsdClient(config.statsd);
   }
   return _statsd_client;
-};
-
-var array_unique = function(array) {
-  var a = [];
-  var l = array.length;
-  for(var i=0; i<l; i++) {
-    for(var j=i+1; j<l; j++) {
-      // If array[i] is found later in the array
-      if (array[i] === array[j])
-        j = ++i;
-    }
-    a.push(array[i]);
-  }
-  return a;
 };
 
 var Monitor = function(app_config, name, config) {
@@ -100,7 +87,7 @@ Monitor.prototype.check = function(value) {
         method(contact, value, level, error);
       });
 
-      this.app_stat('alertd_notify_' + level, 'increment', 1);
+      self.app_stat('alertd_notify_' + level, 'increment', 1);
       ++self.stats[level];
       self.last_notification_time = (new Date).getTime();
       self.state = level;
@@ -124,7 +111,7 @@ Monitor.prototype.get_contacts = function(optional_property) {
     else if (typeof contact === 'object') {
       contacts.push(contact);
     }
-    return array_unique(contacts);
+    return helpers.array_unique(contacts);
   }
   var contacts;
   if (this.config.contact) {
@@ -148,8 +135,12 @@ Monitor.prototype.app_stat = function(metric, kind, value) {
 };
 
 Monitor.prototype.stat = function(kind, value) {
-  if (this.config.stat) {
-    this.app_stat(this.config.stat, kind, value);
+  var stat;
+  if ((stat = this.config.stat)) {
+    if (typeof stat === 'function') {
+      stat = stat.bind(this)(kind, value);
+    }
+    this.app_stat(stat, kind, value);
   }
 };
 
@@ -167,8 +158,24 @@ exports.configure = function(config) {
   monitor_list = [];
   monitors = {};
 
+  var templates = require('./service_templates');
+
+  if (config.templates) {
+    Object.keys(config.templates).forEach(function(name) {
+      var tpl = config.templates[name];
+      if (tpl.extend && templates[tpl.extend]) {
+        tpl = helpers.extend({}, templates[tpl.extend], tpl);
+      }
+      templates[name] = tpl;
+    });
+  }
+
   Object.keys(config.services).forEach(function(name) {
-    var monitor = new Monitor(config, name, config.services[name]);
+    var service = config.services[name];
+    if (service.extend && templates[service.extend]) {
+      service = helpers.extend({}, templates[service.extend], service);
+    }
+    var monitor = new Monitor(config, name, service);
     monitors[name] = monitor;
     monitor_list.push(monitor);
     monitor.start();

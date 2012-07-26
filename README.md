@@ -3,6 +3,9 @@ alertd
 
 A simple, lightweight monitoring and alerting daemon for nodejs. Designed to run either as a backend to [statsd](https://github.com/etsy/statsd) or standalone.
 
+We are using this as a replacement for a Nagios setup which we were finding overcomplicated for what we need. This provides similar alerting capabilities and
+is a breeze to add new monitors to. Especially useful for alerting based on metrics already being sent through statsd.
+
 requirements
 ------------
 

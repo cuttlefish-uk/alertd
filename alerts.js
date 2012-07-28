@@ -25,6 +25,7 @@ var Monitor = function(app_config, name, config) {
   this.app_config = app_config;
   this.name = name;
   this.config = config;
+  this.repeat_count = 0;
 
   if (typeof config.fetch === 'string') {
     if (!config.check) {
@@ -75,32 +76,38 @@ Monitor.prototype.check = function(value) {
   this.app_stat('alertd_check', 'increment', 1);
   this.check_value(value, function(level, error) {
     if (level !== self.state || (level !== 'ok' && self.last_notification_time < (new Date).getTime() - (1000 * (self.config.contact_repeat_rate || 3600)))) {
-      if (self.config.verify_interval && self.config.verify_interval < self.config.interval) {
-        if (!self.verifying) {
-          self.verifying = true;
-          self.verifying_error = error;
-          setTimeout(function() {self.pull();}, self.config.verify_interval * 1000);
-          return;
+      if (++self.repeat_count > (self.config.contact_threshold || 0)) {
+        self.repeat_count = 0;
+        if (self.config.verify_interval && self.config.verify_interval < self.config.interval) {
+          if (!self.verifying) {
+            self.verifying = true;
+            self.verifying_error = error;
+            setTimeout(function() {self.pull();}, self.config.verify_interval * 1000);
+            return;
+          }
+          self.verifying = false;
+          if (self.verifying_error) error = '1) ' + self.verifying_error + "\n\n2) " + error;
         }
-        self.verifying = false;
-        if (self.verifying_error) error = '1) ' + self.verifying_error + "\n\n2) " + error;
-      }
-      var contacts = self.get_contacts();
-      contacts.forEach(function(contact) {
-        var method = contact.method || notify.email;
-        if (typeof method === 'string') {
-          method = notify[method].bind(self);
-        }
-        else {
-          method = method.bind(self);
-        }
-        method(contact, value, level, error);
-      });
+        var contacts = self.get_contacts();
+        contacts.forEach(function(contact) {
+          var method = contact.method || notify.email;
+          if (typeof method === 'string') {
+            method = notify[method].bind(self);
+          }
+          else {
+            method = method.bind(self);
+          }
+          method(contact, value, level, error);
+        });
 
-      self.app_stat('alertd_notify_' + level, 'increment', 1);
-      ++self.stats[level];
-      self.last_notification_time = (new Date).getTime();
-      self.state = level;
+        self.app_stat('alertd_notify_' + level, 'increment', 1);
+        ++self.stats[level];
+        self.last_notification_time = (new Date).getTime();
+        self.state = level;
+      }
+    }
+    else {
+      self.repeat_count = 0;
     }
   });
 };

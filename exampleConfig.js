@@ -27,6 +27,7 @@ statsd:            Object containing host, port, and key (a prefix assigned to a
     'my_http': {
       'extend': 'http', // extend the built-in http template
       'interval': 120,
+      'verify_interval': 10,
       'contact': 'developers',
     },
   },
@@ -37,6 +38,7 @@ statsd:            Object containing host, port, and key (a prefix assigned to a
     // here's a full example
     'example.com': {
       'interval': 120, // check this service every 2 minutes
+      'verify_interval': 10, // if state changes, check again 10 seconds later. if same we'll notify the contact.
       'fetch': 'http', // fetch over http
       'check': 'http', // and check using the http checker
       'contact': 'developers', // if checks fail, notify the developers contact
@@ -56,6 +58,7 @@ statsd:            Object containing host, port, and key (a prefix assigned to a
     'example.com/2': {
       'extend': 'http',
       'interval': 120,
+      'verify_interval': 10,
       'contact': 'developers',
     },
 

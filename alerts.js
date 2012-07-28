@@ -74,7 +74,17 @@ Monitor.prototype.check = function(value) {
   var self = this;
   this.app_stat('alertd_check', 'increment', 1);
   this.check_value(value, function(level, error) {
-    if (level !== self.state || (level !== 'ok' && self.last_notification_time < (new Date).getTime() - (1000 * (self.config.contact_repeat_rate||3600)))) {
+    if (level !== self.state || (level !== 'ok' && self.last_notification_time < (new Date).getTime() - (1000 * (self.config.contact_repeat_rate || 3600)))) {
+      if (self.config.verify_interval && self.config.verify_interval < self.config.interval) {
+        if (!self.verifying) {
+          self.verifying = true;
+          self.verifying_error = error;
+          setTimeout(function() {self.pull();}, self.config.verify_interval * 1000);
+          return;
+        }
+        self.verifying = false;
+        if (self.verifying_error) error = '1) ' + self.verifying_error + "\n\n2) " + error;
+      }
       var contacts = self.get_contacts();
       contacts.forEach(function(contact) {
         var method = contact.method || notify.email;

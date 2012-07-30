@@ -163,17 +163,42 @@ Monitor.prototype.stat = function(kind, value) {
 
 var monitor_list = [];
 var monitors = {};
+var listener_list = [];
+var listeners = {};
+var pattern_monitor_list = [];
+var pattern_monitors = {};
 var server;
 
 exports.monitors = function() {
   return monitor_list;
 };
 
+exports.check = function(key, value) {
+  if (monitors[key]) {
+    monitors[key].check(value);
+  }
+  else {
+    for (var i = 0; i < pattern_monitor_list.length; ++i) {
+      var pattern_monitor = pattern_monitor_list[i];
+      if (pattern_monitor.regex.test(key)) {
+        var monitor = new Monitor(pattern_monitor.app_config, key, pattern_monitor.config);
+        monitors[key] = monitor;
+        listener_list.push(monitor);
+        monitor.check(value);
+        break;
+      }
+    }
+  }
+};
+
 exports.configure = function(config) {
 
   monitor_list.forEach(function(m) {m.stop();});
-  monitor_list = [];
-  monitors = {};
+  monitor_list = []; monitors = {};
+  listener_list.forEach(function(m) {m.stop();});
+  listener_list = []; listeners = {};
+  pattern_monitor_list.forEach(function(m) {m.stop();});
+  pattern_monitor_list = []; pattern_monitors = {};
 
   var templates = require('./service_templates');
 
@@ -194,7 +219,16 @@ exports.configure = function(config) {
     }
     var monitor = new Monitor(config, name, service);
     monitors[name] = monitor;
-    monitor_list.push(monitor);
+    if (service.interval) {
+      monitor_list.push(monitor);
+    }
+    else if (-1 === name.indexOf('*')) {
+      listener_list.push(monitor);
+    }
+    else {
+      monitor.regex = new RegExp(name.replace('.', '\\.').replace('*', '.*'));
+      pattern_monitor_list.push(monitor);
+    }
     monitor.start();
   });
 
@@ -208,16 +242,16 @@ exports.configure = function(config) {
         .replace(/\//g, '-')
         .replace(/[^a-zA-Z_\-0-9\.]/g, '');
 
-      if (listeners[key]) {
-        var value;
-        if (bits.length == 0) {
-          value = 0;
-        }
-        else {
-          value = bits.join(':');
-        }
-        listeners[key].check(value);
+      var value;
+      if (bits.length == 0) {
+        value = 0;
       }
+      else {
+        value = bits.join(':');
+      }
+
+      exports.check(key, value);
+
     });
 
     server.bind(config.port || 8135, config.address || undefined);

@@ -18,14 +18,13 @@ var alerts = require('./alerts')
 
 var flush_stats = function alert_flush(ts, stats) {
 
-  alerts.monitors().forEach(function(monitor) {
-    if (stats.counters[monitor.name] !== undefined) {
-      monitor.check(stats.counters[monitor.name]);
-    }
-    else if (stats.gauges[monitor.name] !== undefined) {
-      monitor.check(stats.gauges[monitor.name]);
-    }
-  });
+  var key;
+  for (key in stats.counters) {
+    alerts.check(key, stats.counters[key]);
+  }
+  for (key in stats.gauges) {
+    alerts.check(key, stats.gauges[key]);
+  }
 
 };
 

@@ -21,7 +21,7 @@ exports.http = function(callback) {
     request.headers['User-Agent'] = this.app_config.user_agent || 'alertd/0.1.0';
   }
   var self = this;
-  var start = new Date;
+  var start = null;
   var client = http.request(request, function(res) {
     res.setEncoding('utf8');
     var body = '';
@@ -29,11 +29,14 @@ exports.http = function(callback) {
       body += chunk;
     });
     res.on('end', function() {
-      var duration = (new Date).getTime() - start.getTime();
+      var duration = Date.now() - start;
       self.stat('timing', duration);
       self.stat('gauge', duration);
       callback({statusCode:res.statusCode, headers:res.headers, body:body, duration:duration});
     });
+  });
+  client.on('socket', function() {
+    start = Date.now();
   });
   if (request.body) client.write(request.body);
   client.end();

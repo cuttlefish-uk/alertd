@@ -76,7 +76,7 @@ Monitor.prototype.check = function(value) {
   this.app_stat('alertd_check', 'increment', 1);
   this.check_value(value, function(level, error) {
     if (level !== self.state || (level !== 'ok' && self.last_notification_time < (new Date).getTime() - (1000 * (self.config.contact_repeat_rate || 3600)))) {
-      if (++self.repeat_count > (self.config.contact_threshold || 0)) {
+      if (++self.repeat_count >= (self.config.contact_threshold || 0)) {
         self.repeat_count = 0;
         if (self.config.verify_interval && self.config.verify_interval < self.config.interval) {
           if (!self.verifying) {

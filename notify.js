@@ -26,7 +26,9 @@ exports.email = function(contact, value, level, error) {
     "subject": level + ': ' + this.name,
     "from": "servers@cuttlefish.com",
     "to": to
-  }, function(err, message) { console.log(err || (new Date) + ' ' + level + ' sent to ' + to); });
+  }, function(err, message) {
+    util.log((err ? 'error sending ' : 'sent ') + level + ' to ' + to + ': ' + error);
+  });
 };
 
 exports.prowl = function(contact, value, level, error) {

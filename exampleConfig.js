@@ -11,6 +11,7 @@ port:              Start a server listening on this UDP port to push metrics to.
 application_name:  App name used in alerts [default: alertd]
 user_agent:        User-Agent header to use for HTTP checks [default: alertd/0.1.0]
 statsd:            Object containing host, port, and key (a prefix assigned to all alertd-generated statsd keys)
+templates:         Service templates to reduce boilerplate. a service can "extend" a template to inherit all its attributes.
 
 */
 {
@@ -78,20 +79,32 @@ statsd:            Object containing host, port, and key (a prefix assigned to a
       // the value checkers (gt, lt, eq) support the following 2 threshold options:
       'warning': 2, // warn if >= 2
       'critical': 5, // send critical alert if >= 5
+
+      // quiet time checks are specified as xx:xx-xx:xx time ranges. these are recursive
+      // checks so arrays or weekday objects can contain further arrays/objects.
+      'quiet_times': [
+        '02:00-02:30', // no alerts between 2 and 2:30am on any day
+        {
+          'tue': '03:30-03:45', // extra 15-minute quiet period on tuesday
+          'wed': ['01:00-02:00', '04:00-04:30'], // extra quiet periods on wednesday
+        },
+      ],
     },
   },
+
   contacts: {
     'ted': {
-      'email': 'ted@example.com'
-    },
-    'ted_mobile': {
-      'method': 'prowl',
-      'api_key': 'insert prowl api key here',
+      'email': 'ted@example.com',
     },
     'dougal': {
       'email': 'dougal@example.com'
     },
+    'jack_mobile': {
+      'method': 'prowl',
+      'api_key': 'insert prowl api key here',
+      'quiet_times': '23:00-06:00', // don't wake jack.
+    },
     // a contact may be an array of other contact names
-    'developers': ['ted', 'ted_mobile', 'dougal']
+    'developers': ['ted', 'dougal', 'jack_mobile']
   }
 }

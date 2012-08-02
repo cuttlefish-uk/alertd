@@ -71,11 +71,63 @@ Monitor.prototype.pull = function() {
   });
 };
 
+var day_names = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+Monitor.prototype.is_quiet_time = function(config) {
+  var now = new Date;
+  var now_time = now.getTime();
+  var h = now.getHours();
+  var m = now.getMinutes();
+  var is_time_now = function(time) {
+      var bits = time.match(/^(\d{1,2})(:(\d{1,2}))?\s*-\s*(\d{1,2})(:(\d{1,2}))?$/);
+      var from_h = parseInt(bits[1], 10);
+      var from_m = bits[3] ? parseInt(bits[3], 10) : 0;
+      var from = new Date;
+      from.setHours(from_h, from_m, 0);
+      from = from.getTime();
+      var to_h = parseInt(bits[4], 10);
+      var to_m = bits[6] ? parseInt(bits[6], 10) : 0;
+      var to = new Date;
+      to.setHours(to_h, to_m, 0);
+      to = to.getTime();
+      if (from > to) {
+        if (from > now_time) from -= 86400000;
+        else to += 86400000;
+      }
+      return from <= now_time && to >= now_time;
+  };
+
+  var check = function(qt) {
+    if (typeof qt === 'string') {
+      return is_time_now(qt);
+    }
+    else if (util.isArray(qt)) {
+      for (var i = 0; i < qt.length; ++i) {
+        if (check(qt[i])) {
+          return true;
+        }
+      }
+    }
+    else if (typeof qt === 'object') {
+      if (qt[day_names[now.getDay()]] !== undefined) {
+        return check(qt[day_names[now.getDay()]]);
+      }
+    }
+    return false;
+  };
+
+  var qt = config.quiet_times || config.quiet_time;
+  return check(qt);
+};
+
 Monitor.prototype.check = function(value) {
   var self = this;
+  if (this.is_quiet_time(this.config)) {
+    return;
+  }
   this.app_stat('alertd_check', 'increment', 1);
   this.check_value(value, function(level, error) {
-    if (level !== self.state || (level !== 'ok' && self.last_notification_time < (new Date).getTime() - (1000 * (self.config.contact_repeat_rate || 3600)))) {
+    if (level !== self.state || (level !== 'ok' && self.last_notification_time < Date.now() - (1000 * (self.config.contact_repeat_rate || 3600)))) {
       if (++self.repeat_count >= (self.config.contact_threshold || 0)) {
         self.repeat_count = 0;
         if (self.config.verify_interval && self.config.verify_interval < self.config.interval) {
@@ -90,19 +142,21 @@ Monitor.prototype.check = function(value) {
         }
         var contacts = self.get_contacts();
         contacts.forEach(function(contact) {
-          var method = contact.method || notify.email;
-          if (typeof method === 'string') {
-            method = notify[method].bind(self);
+          if (!self.is_quiet_time(contact)) {
+            var method = contact.method || notify.email;
+            if (typeof method === 'string') {
+              method = notify[method].bind(self);
+            }
+            else {
+              method = method.bind(self);
+            }
+            method(contact, value, level, error);
           }
-          else {
-            method = method.bind(self);
-          }
-          method(contact, value, level, error);
         });
 
         self.app_stat('alertd_notify_' + level, 'increment', 1);
         ++self.stats[level];
-        self.last_notification_time = (new Date).getTime();
+        self.last_notification_time = Date.now();
         self.state = level;
       }
     }
@@ -168,6 +222,8 @@ var listeners = {};
 var pattern_monitor_list = [];
 var pattern_monitors = {};
 var server;
+
+exports.Monitor = Monitor;
 
 exports.monitors = function() {
   return monitor_list;

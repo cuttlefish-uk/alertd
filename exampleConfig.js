@@ -9,6 +9,7 @@ Optional Variables:
 
 port:              Start a server listening on this UDP port to push metrics to.
 application_name:  App name used in alerts [default: alertd]
+email_from:        Email address for alerts to come from [default: alertd@{os.hostname()}]
 user_agent:        User-Agent header to use for HTTP checks [default: alertd/0.1.0]
 statsd:            Object containing host, port, and key (a prefix assigned to all alertd-generated statsd keys)
 templates:         Service templates to reduce boilerplate. a service can "extend" a template to inherit all its attributes.

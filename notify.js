@@ -1,9 +1,10 @@
 
 var email = require('emailjs')
+, https = require('https')
+, os = require('os')
+, querystring = require('querystring')
 , url = require('url')
 , util = require('util')
-, https = require('https')
-, querystring = require('querystring')
 
 exports.console = function(contact, value, level, error) {
   util.log(level + ': ' + error);
@@ -20,7 +21,7 @@ exports.email = function(contact, value, level, error) {
   server.send({
     "text": error + "\n\n" + (new Date),
     "subject": level + ': ' + this.name,
-    "from": "servers@cuttlefish.com",
+    "from": this.app_config.email_from || ("alertd@" + os.hostname()),
     "to": to
   }, function(err, message) {
     util.log((err ? 'error sending ' : 'sent ') + level + ' to ' + to + ': ' + error);

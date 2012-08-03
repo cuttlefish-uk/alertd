@@ -2,12 +2,8 @@
 var email = require('emailjs')
 , url = require('url')
 , util = require('util')
-, Prowl
-
-try {
-  Prowl = require('node-prowl/lib')
-}
-catch(e) {}
+, https = require('https')
+, querystring = require('querystring')
 
 exports.console = function(contact, value, level, error) {
   util.log(level + ': ' + error);
@@ -32,18 +28,41 @@ exports.email = function(contact, value, level, error) {
 };
 
 exports.prowl = function(contact, value, level, error) {
-  if (!Prowl) {
-    console.log("node-prowl module not available");
-    return;
-  }
   var key = contact.api_key;
-  var prowl = new Prowl(key);
-  prowl.push(level + ': ' + this.name, this.app_config.application_name||'alertd', {
-    priority: (level === 'critical' ? 2 : 0),
-    url: this.config.url ? this.config.url : null,
-    description: error
-  }, function(err, res) {
-    if (err) console.log(err);
+  var application_name = this.app_config.application_name || 'alertd';
+  var event_name = level + ': ' + this.name;
+  var priority = level === 'critical' ? 2 : 0;
+  var event_url = this.config.url || null;
+  var description = error + (this.config.url ? "\n" + this.config.url : '');
+
+  var endpoint = contact.endpoint || this.app_config.prowl_endpoint || "https://api.prowlapp.com/publicapi/";
+  var query = {
+    event:event_name,
+    application:application_name,
+    apikey:key,
+    priority:priority,
+    url:event_url,
+    description:description,
+  };
+
+  var api_url = endpoint + 'add?' + querystring.stringify(query);
+
+  var request = url.parse(api_url);
+  request.method = 'POST';
+  var client = https.request(request, function(res) {
+    res.setEncoding('utf8');
+    var body = '';
+    res.on('data', function(chunk) {
+      body += chunk;
+    });
+    res.on('end', function() {
+      if (res.statusCode !== 200) {
+        console.log(res.statusCode, res.headers, body);
+      }
+    });
   });
+  client.on('error', function() {console.log('Error posting to prowl', arguments);});
+  client.end();
+
 };
 

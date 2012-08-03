@@ -14,7 +14,6 @@ requirements
 
 Optional:
 
-* node-prowl (tested with v0.1.4)
 * statsd-client (tested with v0.0.4)
 
 statsd backend

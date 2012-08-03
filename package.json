@@ -8,8 +8,7 @@
   },
   "version": "0.1.0",
   "dependencies": {
-    "emailjs": ">=0.3.0",
-    "node-prowl": ">=0.1.4"
+    "emailjs": ">=0.3.0"
   },
   "engine": {
     "node" : ">=0.8"

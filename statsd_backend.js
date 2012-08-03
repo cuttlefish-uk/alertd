@@ -8,8 +8,8 @@
  *
  * This backend supports the following config options:
  *
- *   alertHost: Hostname of alert server.
- *   alertPort: Port to contact alert server at.
+ *   alertConfig: Path to alertd config file.
+ *
  */
 
 var alerts = require('./alerts')

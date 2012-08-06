@@ -1,4 +1,5 @@
 var http = require('http')
+, https = require('https')
 , url = require('url')
 , helpers = require('./helpers')
 
@@ -22,7 +23,8 @@ exports.http = function(callback) {
   }
   var self = this;
   var start = null;
-  var client = http.request(request, function(res) {
+  var module = request.protocol === 'https:' ? https : http;
+  var client = module.request(request, function(res) {
     res.setEncoding('utf8');
     var body = '';
     res.on('data', function(chunk) {

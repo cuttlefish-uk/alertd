@@ -33,7 +33,7 @@ exports.http_200 = function(res, on_error) {
   }
 };
 
-exports.value_over = function(res, on_error) {
+exports.value_gt = function(res, on_error) {
   if (typeof this.config.critical !== undefined) {
     if (res > valueof(this.config.critical)) {
       return on_error('critical', this.name + ' is ' + res + ' (has exceeded ' + valueof(this.config.critical) + ')');
@@ -46,9 +46,8 @@ exports.value_over = function(res, on_error) {
   }
   on_error('ok', this.name + ' ok');
 };
-exports.value_gt = exports.value_over;
 
-exports.value_under = function(res, on_error) {
+exports.value_lt = function(res, on_error) {
   if (typeof this.config.critical !== undefined) {
     if (res < valueof(this.config.critical)) {
       return on_error('critical', this.name + ' is ' + res + ' (has fallen below ' + valueof(this.config.critical) + ')');
@@ -61,9 +60,8 @@ exports.value_under = function(res, on_error) {
   }
   on_error('ok', this.name + ' ok');
 };
-exports.value_lt = exports.value_under;
 
-exports.value_equal = function(res, on_error) {
+exports.value_eq = function(res, on_error) {
   if (typeof this.config.critical !== undefined) {
     if (res == valueof(this.config.critical)) {
       return on_error('critical', this.name + ' is ' + valueof(this.config.critical));
@@ -76,5 +74,4 @@ exports.value_equal = function(res, on_error) {
   }
   on_error('ok', this.name + ' ok');
 };
-exports.value_eq = exports.value_equal;
 

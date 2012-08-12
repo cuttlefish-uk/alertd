@@ -21,6 +21,43 @@ var statsd_client = function(config) {
   return _statsd_client;
 };
 
+
+var day_names = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+// parse strings of the form "01:30 - 03:45" returning array of timestamps (in ms)
+function parse_time_range_relative_to(time_range, relative_to_ms) {
+  relative_to_ms = relative_to_ms || Date.now();
+  var bits = time_range.match(/^(\d{1,2})(:(\d{1,2}))?\s*-\s*(\d{1,2})(:(\d{1,2}))?$/);
+  var from_h = parseInt(bits[1], 10);
+  var from_m = bits[3] ? parseInt(bits[3], 10) : 0;
+  var from = new Date;
+  from.setHours(from_h, from_m, 0);
+  var to_h = parseInt(bits[4], 10);
+  var to_m = bits[6] ? parseInt(bits[6], 10) : 0;
+  var to = new Date;
+  to.setHours(to_h, to_m, 0);
+  from = from.getTime();
+  to = to.getTime();
+  // work out whether we're inside the time range.
+  // if from > to (e.g. 22:00-09:00) we need to adjust start and
+  // end relative to today.
+  if (from > to) {
+    if (from > relative_to_ms) from -= 86400000;
+    else to += 86400000;
+  }
+  return [from, to];
+}
+
+var unit_multiplier = {
+  'T':1.099512e12, 'G':1.073742e9, 'M':1048576.0, 'K':1024.0,
+};
+
+/*
+ * A Monitor object will be created for each defined service.
+ *
+ * If it's a polled service (has config.interval) it will fetch then check and notify if necessary.
+ * Otherwise it will wait to have its check called and notify if necessary.
+ */
 var Monitor = function(app_config, name, config) {
   this.app_config = app_config;
   this.name = name;
@@ -51,7 +88,7 @@ var Monitor = function(app_config, name, config) {
 };
 
 Monitor.prototype.start = function() {
-    if (this.config.interval && !this._timer) {
+    if (this.config.interval && this.fetch && !this._timer) {
       var self = this;
       this._timer = setInterval(function() {self.pull();}, 1000 * this.config.interval);
     }
@@ -71,30 +108,13 @@ Monitor.prototype.pull = function() {
   });
 };
 
-var day_names = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-
 Monitor.prototype.is_quiet_time = function(config) {
   var now = new Date;
   var now_time = now.getTime();
-  var h = now.getHours();
-  var m = now.getMinutes();
+
   var is_time_now = function(time) {
-      var bits = time.match(/^(\d{1,2})(:(\d{1,2}))?\s*-\s*(\d{1,2})(:(\d{1,2}))?$/);
-      var from_h = parseInt(bits[1], 10);
-      var from_m = bits[3] ? parseInt(bits[3], 10) : 0;
-      var from = new Date;
-      from.setHours(from_h, from_m, 0);
-      from = from.getTime();
-      var to_h = parseInt(bits[4], 10);
-      var to_m = bits[6] ? parseInt(bits[6], 10) : 0;
-      var to = new Date;
-      to.setHours(to_h, to_m, 0);
-      to = to.getTime();
-      if (from > to) {
-        if (from > now_time) from -= 86400000;
-        else to += 86400000;
-      }
-      return from <= now_time && to >= now_time;
+      var times = parse_time_range_relative_to(time, now_time);
+      return times[0] <= now_time && times[1] >= now_time;
   };
 
   var check = function(qt) {
@@ -249,6 +269,24 @@ exports.check = function(key, value) {
 
 exports.configure = function(config) {
 
+  var expand_config = function(config) {
+    if (typeof config.check === 'string') {
+      var m = config.check.match(/^([<=>])(([0-9\.-]+)([TGMK])?)|(([0-9\.-]+)([TGMK])?)$/);
+      if (m) {
+        config.check = (m[1] === '<' ? 'value_lt' : (m[1] === '=' ? 'value_eq' : 'value_gt'));
+        config.warning = parseFloat(m[3]);
+        if (m[4] && typeof unit_multiplier[m[4]] === 'number') {
+          config.warning *= unit_multiplier[m[4]];
+        }
+        config.critical = parseFloat(m[6]);
+        if (m[7] && typeof unit_multiplier[m[7]] === 'number') {
+          config.critical *= unit_multiplier[m[7]];
+        }
+      }
+    }
+    return config;
+  };
+
   monitor_list.forEach(function(m) {m.stop();});
   monitor_list = []; monitors = {};
   listener_list.forEach(function(m) {m.stop();});
@@ -258,9 +296,13 @@ exports.configure = function(config) {
 
   var templates = require('./service_templates');
 
+  Object.keys(templates).forEach(function(name) {
+    templates[name] = expand_config(templates[name]);
+  });
+
   if (config.templates) {
     Object.keys(config.templates).forEach(function(name) {
-      var tpl = config.templates[name];
+      var tpl = expand_config(config.templates[name]);
       if (tpl.extend && templates[tpl.extend]) {
         tpl = helpers.extend({}, templates[tpl.extend], tpl);
       }
@@ -269,7 +311,7 @@ exports.configure = function(config) {
   }
 
   Object.keys(config.services).forEach(function(name) {
-    var service = config.services[name];
+    var service = expand_config(config.services[name]);
     if (service.extend && templates[service.extend]) {
       service = helpers.extend({}, templates[service.extend], service);
     }

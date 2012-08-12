@@ -2,6 +2,7 @@ var http = require('http')
 , https = require('https')
 , url = require('url')
 , helpers = require('./helpers')
+, child_process = require('child_process')
 
 exports.http = function(callback) {
   var request;
@@ -42,5 +43,11 @@ exports.http = function(callback) {
   });
   if (request.body) client.write(request.body);
   client.end();
+};
+
+exports.exec = function(callback) {
+  child_process.exec(this.config.cmd, function(error, stdout, stderr) {
+    callback(stdout);
+  });
 };
 

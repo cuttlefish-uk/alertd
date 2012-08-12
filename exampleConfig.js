@@ -67,8 +67,19 @@ templates:         Service templates to reduce boilerplate. a service can "exten
     // and trimmed down further using our defined template
     'example.com/3': {'extend': 'my_http'},
 
+    // poll the load by executing a command
+    'localhost.load1': {
+      'interval': 60,
+      'fetch': 'exec',
+      'cmd': "awk '{print $1}' < /proc/loadavg",
+      'check': 'value_gt',
+      'warning': 2,
+      'critical': 5,
+      'contact': 'developers',
+    },
+
     /*
-    * This service has no interval so won't be polled.
+    * This service has no 'fetch' or 'interval' so won't be polled.
     * It's only checked if we're using the statsd backend, or
     * if we're running as a server (the srv.s1.load5 metric is
     * to be pushed to alertd).
@@ -78,8 +89,8 @@ templates:         Service templates to reduce boilerplate. a service can "exten
       'contact': 'dougal', // notify dougal
 
       // the value checkers (gt, lt, eq) support the following 2 threshold options:
-      'warning': 2, // warn if >= 2
-      'critical': 5, // send critical alert if >= 5
+      'warning': 2, // warn if > 2
+      'critical': 5, // send critical alert if > 5
 
       // quiet time checks are specified as xx:xx-xx:xx time ranges. these are recursive
       // checks so arrays or weekday objects can contain further arrays/objects.

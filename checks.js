@@ -10,7 +10,10 @@ exports.http = function(res, on_error) {
   var statusCode = this.config.statusCode === undefined ? 200 : valueof(this.config.statusCode);
   var duration_secs = res.duration / 1000;
   if (res.statusCode !== statusCode) {
-    return on_error('critical', this.name + ' response: ' + res.statusCode + ' (expected ' + statusCode + ')\n' + duration_secs + 's');
+    if (res.statusCode === 0) {
+      return on_error('critical', this.name + ' ' + res.body + ' (in ' + duration_secs + 's)');
+    }
+    return on_error('critical', this.name + ' response: ' + res.statusCode + ' (expected ' + statusCode + ')\n' + duration_secs + 's' + (res.statusCode === 0 ? "\n" + res.body : ''));
   }
   if (this.config.bodyMatch !== undefined) {
     if (!res.body.match(this.config.bodyMatch)) {

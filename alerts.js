@@ -79,7 +79,11 @@ var Monitor = function(app_config, name, config) {
   else if (typeof config.check === 'function') {
     this.check_value = config.check.bind(this);
   }
+
+  this.contact_repeat_rate = 1000 * (this.config.contact_repeat_rate || 3600)
+
   this.state = 'ok';
+
   this.stats = {
     ok:0,
     warning:0,
@@ -147,18 +151,22 @@ Monitor.prototype.check = function(value) {
   }
   this.app_stat('alertd_check', 'increment', 1);
   this.check_value(value, function(level, error) {
-    if (level !== self.state || (level !== 'ok' && self.last_notification_time < Date.now() - (1000 * (self.config.contact_repeat_rate || 3600)))) {
+    if (level !== self.state || (level !== 'ok' && self.last_notification_time < Date.now() - self.contact_repeat_rate)) {
       if (++self.repeat_count >= (self.config.contact_threshold || 0)) {
         self.repeat_count = 0;
         if (self.config.verify_interval && self.config.verify_interval < self.config.interval) {
           if (!self.verifying) {
-            self.verifying = true;
-            self.verifying_error = error;
+            self.verifying = {
+              date: new Date,
+              error: error,
+            };
             setTimeout(function() {self.pull();}, self.config.verify_interval * 1000);
             return;
           }
-          self.verifying = false;
-          if (self.verifying_error) error = '1) ' + self.verifying_error + "\n\n2) " + error;
+          if (self.verifying) {
+            error = self.verifying.date.toLocaleTimeString() + ') ' + self.verifying.error + "\n" + (new Date).toLocaleTimeString() + ") " + error;
+          }
+          self.verifying = null;
         }
         var contacts = self.get_contacts();
         contacts.forEach(function(contact) {
@@ -182,6 +190,7 @@ Monitor.prototype.check = function(value) {
     }
     else {
       self.repeat_count = 0;
+      self.verifying = null;
     }
   });
 };

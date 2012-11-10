@@ -124,7 +124,19 @@ Monitor.prototype.is_time = function(time) {
 
   var check = function(qt) {
     if (typeof qt === 'string') {
-      return is_time_now(qt);
+      var times = qt.split(','), time, m;
+      for (var i = 0; i < times.length; ++i) {
+        time = times[i].trim();
+        m = time.match(/^(mon|tue|wed|thu|fri|sat|sun) (.+)$/);
+        if (m) {
+          if (m[1] === day_names[now.getDay()] && is_time_now(m[2])) {
+            return true;
+          }
+        }
+        else if (is_time_now(time)) {
+          return true;
+        }
+      }
     }
     else if (util.isArray(qt)) {
       for (var i = 0; i < qt.length; ++i) {

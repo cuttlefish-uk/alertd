@@ -340,8 +340,14 @@ exports.configure = function(config) {
 
   Object.keys(config.services).forEach(function(name) {
     var service = expand_config(config.services[name]);
-    if (service.extend && templates[service.extend]) {
-      service = helpers.extend({}, templates[service.extend], service);
+    if (service.extend) {
+      var extend = service.extend;
+      if (!util.isArray(extend)) extend = [extend];
+      extend.forEach(function(tpl) {
+        if (templates[tpl]) {
+          service = helpers.extend({}, templates[tpl], service);
+        }
+      });
     }
     var monitor = new Monitor(config, name, service);
     monitors[name] = monitor;

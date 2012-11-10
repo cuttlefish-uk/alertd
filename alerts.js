@@ -24,7 +24,7 @@ var statsd_client = function(config) {
 
 var day_names = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
-// parse strings of the form "01:30 - 03:45" returning array of timestamps (in ms)
+// parse strings of the form "01:30 - 03:45" returning array of 2 timestamps (in ms)
 function parse_time_range_relative_to(time_range, relative_to_ms) {
   relative_to_ms = relative_to_ms || Date.now();
   var bits = time_range.match(/^(\d{1,2})(:(\d{1,2}))?\s*-\s*(\d{1,2})(:(\d{1,2}))?$/);
@@ -112,7 +112,7 @@ Monitor.prototype.pull = function() {
   });
 };
 
-Monitor.prototype.is_quiet_time = function(config) {
+Monitor.prototype.is_time = function(time) {
   var now = new Date;
   var now_time = now.getTime();
 
@@ -140,27 +140,42 @@ Monitor.prototype.is_quiet_time = function(config) {
     return false;
   };
 
-  var qt = config.quiet_times || config.quiet_time;
-  return check(qt);
+	return check(time);
+};
+
+Monitor.prototype.current_config = function(config) {
+  if (config.at) {
+    var original = config;
+    Object.keys(config.at).forEach(function(time) {
+      if (self.is_time(time)) {
+        if (config === original) {
+          config = helpers.extend({}, config);
+        }
+        config = helpers.extend(config, config.at[time]);
+      }
+    });
+  }
+  return config;
 };
 
 Monitor.prototype.check = function(value) {
   var self = this;
-  if (this.is_quiet_time(this.config)) {
+  var config = this.current_config(this.config);
+  if (config.silent || this.is_time(config.quiet_times || config.quiet_time)) {
     return;
   }
   this.app_stat('alertd_check', 'increment', 1);
   this.check_value(value, function(level, error) {
     if (level !== self.state || (level !== 'ok' && self.last_notification_time < Date.now() - self.contact_repeat_rate)) {
-      if (++self.repeat_count >= (self.config.contact_threshold || 0)) {
+      if (++self.repeat_count >= (config.contact_threshold || 0)) {
         self.repeat_count = 0;
-        if (self.config.verify_interval && self.config.verify_interval < self.config.interval) {
+        if (config.verify_interval && config.verify_interval < config.interval) {
           if (!self.verifying) {
             self.verifying = {
               date: new Date,
               error: error,
             };
-            setTimeout(function() {self.pull();}, self.config.verify_interval * 1000);
+            setTimeout(function() {self.pull();}, config.verify_interval * 1000);
             return;
           }
           if (self.verifying) {
@@ -168,9 +183,10 @@ Monitor.prototype.check = function(value) {
           }
           self.verifying = null;
         }
-        var contacts = self.get_contacts();
+        var contacts = self.get_contacts(config);
         contacts.forEach(function(contact) {
-          if (!self.is_quiet_time(contact)) {
+          contact = self.current_config(contact);
+          if (!self.is_time(contact.quiet_times || contact.quiet_time)) {
             var method = contact.method || notify.email;
             if (typeof method === 'string') {
               method = notify[method].bind(self);
@@ -179,6 +195,9 @@ Monitor.prototype.check = function(value) {
               method = method.bind(self);
             }
             method(contact, value, level, error);
+          }
+          else {
+            util.log('Suppressed due to quiet time: ' + error);
           }
         });
 
@@ -195,7 +214,7 @@ Monitor.prototype.check = function(value) {
   });
 };
 
-Monitor.prototype.get_contacts = function(optional_property) {
+Monitor.prototype.get_contacts = function(config, optional_property) {
   var self = this;
   function _get(name) {
     var contacts = [];
@@ -214,11 +233,11 @@ Monitor.prototype.get_contacts = function(optional_property) {
     return helpers.array_unique(contacts);
   }
   var contacts;
-  if (this.config.contact) {
-    contacts = _get(this.config.contact);
+  if (config.contact) {
+    contacts = _get(config.contact);
   }
   else {
-    contacts = [this.config];
+    contacts = [config];
   }
   if (optional_property) {
     contacts = contacts.map(function(c) {return c[optional_property];}).filter(function(c) {return c !== undefined;});

@@ -1,4 +1,5 @@
-/*
+/* vim: et:sw=2:ts=2
+ *
  * A statsd backend for alertd
  *
  * To enable this backend, include 'alert' in the backends

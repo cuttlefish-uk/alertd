@@ -1,3 +1,5 @@
+// vim: et:sw=2:ts=2
+
 var fs  = require('fs')
   , util = require('util')
 
@@ -22,7 +24,7 @@ var Configurator = function (file) {
   this.updateConfig();
 
   fs.watchFile(file, function (curr, prev) {
-    if (curr.ino != prev.ino) { self.updateConfig(); }
+    if (curr.mtime != prev.mtime) { self.updateConfig(); }
   });
 };
 

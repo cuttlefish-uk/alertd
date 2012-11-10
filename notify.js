@@ -1,3 +1,4 @@
+// vim: et:sw=2:ts=2
 
 var email = require('emailjs')
 , https = require('https')

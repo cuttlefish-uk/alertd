@@ -1,3 +1,4 @@
+// vim: et:sw=2:ts=2
 
 exports.extend = function(target) {
   var i = 1, length = arguments.length, source;

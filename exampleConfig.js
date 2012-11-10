@@ -101,6 +101,31 @@ templates:         Service templates to reduce boilerplate. a service can "exten
       'contact': 'developers',
     },
 
+    // service groups can be used to reduce config repetition
+    'backup_server': {
+
+      // common configuration for all sub-services
+      'common': {
+        'contact': 'ted',
+        // no alerts from midnight for 15 minutes on sat or sun
+        'at': {
+          'sat 00:00-00:15, sun 00:00-00:15': {
+            'silent': true,
+          },
+        },
+      },
+
+      // ted will be the contact for both these services,
+      // and alerts will be silenced from 00:00-00:15
+      'backup.load1 {
+        'check': '>2|5',
+      },
+      'backups.example.com': {
+        'extend': 'http',
+      },
+
+    },
+
   },
 
   contacts: {

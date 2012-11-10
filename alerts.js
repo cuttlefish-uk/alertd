@@ -146,6 +146,7 @@ Monitor.prototype.is_time = function(time) {
 
 Monitor.prototype.current_config = function(config) {
   if (config.at) {
+    var self = this;
     var original = config;
     Object.keys(config.at).forEach(function(time) {
       if (self.is_time(time)) {
@@ -298,6 +299,8 @@ exports.check = function(key, value) {
 
 exports.configure = function(config) {
 
+  var app_config = config;
+
   var expand_config = function(config) {
     if (typeof config.check === 'string') {
       var m = config.check.match(/^([<=>])(([0-9\.-]+)([TGMK])?)|(([0-9\.-]+)([TGMK])?)$/);
@@ -339,31 +342,52 @@ exports.configure = function(config) {
     });
   }
 
-  Object.keys(config.services).forEach(function(name) {
-    var service = expand_config(config.services[name]);
-    if (service.extend) {
-      var extend = service.extend;
-      if (!util.isArray(extend)) extend = [extend];
-      extend.forEach(function(tpl) {
-        if (templates[tpl]) {
-          service = helpers.extend({}, templates[tpl], service);
+  function parse_services(config) {
+    Object.keys(config.services).forEach(function(name) {
+      var service = config.services[name];
+      if (config.common) {
+        service = helpers.extend({}, config.common, service);
+      }
+      service = expand_config(service);
+      if (service.extend) {
+        var extend = service.extend;
+        if (!util.isArray(extend)) extend = [extend];
+        extend.forEach(function(tpl) {
+          if (templates[tpl]) {
+            service = helpers.extend({}, templates[tpl], service);
+          }
+        });
+      }
+      if (service.services) {
+        if (config.common) {
+          if (service.common) {
+            service.common = helpers.extend({}, config.common, service.common);
+          }
+          else {
+            service.common = config.common;
+          }
         }
-      });
-    }
-    var monitor = new Monitor(config, name, service);
-    monitors[name] = monitor;
-    if (service.interval) {
-      monitor_list.push(monitor);
-    }
-    else if (-1 === name.indexOf('*')) {
-      listener_list.push(monitor);
-    }
-    else {
-      monitor.regex = new RegExp(name.replace('.', '\\.').replace('*', '.*'));
-      pattern_monitor_list.push(monitor);
-    }
-    monitor.start();
-  });
+        parse_services(service);
+      }
+      else {
+        var monitor = new Monitor(app_config, name, service);
+        monitors[name] = monitor;
+        if (service.interval) {
+          monitor_list.push(monitor);
+        }
+        else if (-1 === name.indexOf('*')) {
+          listener_list.push(monitor);
+        }
+        else {
+          monitor.regex = new RegExp(name.replace('.', '\\.').replace('*', '.*'));
+          pattern_monitor_list.push(monitor);
+        }
+        monitor.start();
+      }
+    });
+  }
+
+  parse_services(config);
 
   if (server === undefined && typeof config.port === 'number') {
 

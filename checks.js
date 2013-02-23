@@ -7,6 +7,37 @@ var valueof = function(v) {
   return v;
 };
 
+var round = function(v, dp) {
+  if (dp) {
+    var scale = Math.pow(10, dp);
+    return Math.round(v * scale) / scale;
+  }
+  return Math.round(v);
+};
+
+var format = function(v, config) {
+  v = valueof(v);
+  if (config && config.format_scale) v *= config.format_scale;
+  if (config.format === 'bytes') {
+    if (v < 1024) {
+      return v + ' bytes';
+    }
+    else if (v < Math.pow(1024, 2)) {
+      return round(v / 1024, 2) + ' Kb';
+    }
+    else if (v < Math.pow(1024, 3)) {
+      return round(v / Math.pow(1024, 2), 2) + ' Mb';
+    }
+    else if (v < Math.pow(1024, 4)) {
+      return round(v / Math.pow(1024, 3), 2) + ' Gb';
+    }
+    else {
+      return round(v / Math.pow(1024, 4), 2) + ' Tb';
+    }
+  }
+  return v;
+};
+
 exports.http = function(res, on_error) {
   var statusCode = this.config.statusCode === undefined ? 200 : valueof(this.config.statusCode);
   var duration_secs = res.duration / 1000;
@@ -40,12 +71,12 @@ exports.http_200 = function(res, on_error) {
 exports.value_gt = function(res, on_error) {
   if (typeof this.config.critical !== undefined) {
     if (res > valueof(this.config.critical)) {
-      return on_error('critical', this.name + ' is ' + res + ' (has exceeded ' + valueof(this.config.critical) + ')');
+      return on_error('critical', this.name + ' is ' + format(res, this.config) + ' (has exceeded ' + format(this.config.critical, this.config) + ')');
     }
   }
   if (typeof this.config.warning !== undefined) {
     if (res > valueof(this.config.warning)) {
-      return on_error('warning', this.name + ' is ' + res + ' (has exceeded ' + valueof(this.config.warning) + ')');
+      return on_error('warning', this.name + ' is ' + format(res, this.config) + ' (has exceeded ' + format(this.config.warning, this.config) + ')');
     }
   }
   on_error('ok', this.name + ' ok');
@@ -54,12 +85,12 @@ exports.value_gt = function(res, on_error) {
 exports.value_lt = function(res, on_error) {
   if (typeof this.config.critical !== undefined) {
     if (res < valueof(this.config.critical)) {
-      return on_error('critical', this.name + ' is ' + res + ' (has fallen below ' + valueof(this.config.critical) + ')');
+      return on_error('critical', this.name + ' is ' + format(res, this.config) + ' (has fallen below ' + format(this.config.critical, this.config) + ')');
     }
   }
   if (typeof this.config.warning !== undefined) {
     if (res < valueof(this.config.warning)) {
-      return on_error('warning', this.name + ' is ' + res + ' (has fallen below ' + valueof(this.config.warning) + ')');
+      return on_error('warning', this.name + ' is ' + format(res, this.config) + ' (has fallen below ' + format(this.config.warning, this.config) + ')');
     }
   }
   on_error('ok', this.name + ' ok');

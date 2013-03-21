@@ -315,7 +315,7 @@ exports.configure = function(config) {
 
   var expand_config = function(config) {
     if (typeof config.check === 'string') {
-      var m = config.check.match(/^([<=>])(([0-9\.-]+)([TGMK])?)|(([0-9\.-]+)([TGMK])?)$/);
+      var m = config.check.match(/^([<=>])(([0-9\.-]+)([TGMK])?)\|(([0-9\.-]+)([TGMK])?)$/);
       if (m) {
         config.check = (m[1] === '<' ? 'value_lt' : (m[1] === '=' ? 'value_eq' : 'value_gt'));
         config.warning = parseFloat(m[3]);

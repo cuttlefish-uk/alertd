@@ -232,17 +232,24 @@ Monitor.prototype.get_contacts = function(config, optional_property) {
   var self = this;
   function _get(name) {
     var contacts = [];
-    var contact = self.app_config.contacts[name];
-    if (typeof contact === 'string') {
-      contacts = contacts.concat(_get(contact));
-    }
-    else if (util.isArray(contact)) {
-      contact.forEach(function(c) {
+    if (util.isArray(name)) {
+      name.forEach(function(c) {
         contacts = contacts.concat(_get(c));
       });
     }
-    else if (typeof contact === 'object') {
-      contacts.push(contact);
+    else {
+      var contact = self.app_config.contacts[name];
+      if (typeof contact === 'string') {
+        contacts = contacts.concat(_get(contact));
+      }
+      else if (util.isArray(contact)) {
+        contact.forEach(function(c) {
+          contacts = contacts.concat(_get(c));
+        });
+      }
+      else if (typeof contact === 'object') {
+        contacts.push(contact);
+      }
     }
     return helpers.array_unique(contacts);
   }

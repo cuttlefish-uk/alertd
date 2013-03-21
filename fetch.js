@@ -26,21 +26,30 @@ exports.http = function(callback) {
   }
 
   var self = this;
-  var start = null;
+  var queue_time = Date.now(), start = null, timing = {};
 
   var module = request.protocol === 'https:' ? https : http;
 
   var client = module.request(request, function(res) {
     res.setEncoding('utf8');
     var body = '';
+    var data_start;
     res.on('data', function(chunk) {
+      if (typeof data_start === 'undefined') {
+        data_start = Date.now();
+        timing.data_start = data_start - (timing.socket_connected ? timing.socket_connected : start);
+      }
       body += chunk;
     });
     res.on('end', function() {
-      var duration = Date.now() - start;
+      var now = Date.now();
+      var duration = now - start;
+      if (typeof data_start !== 'undefined') {
+        timing.data_duration = now - data_start;
+      }
       self.stat('timing', duration);
       self.stat('gauge', duration);
-      callback({statusCode:res.statusCode, headers:res.headers, body:body, duration:duration});
+      callback({statusCode:res.statusCode, headers:res.headers, body:body, duration:duration, timing:timing});
     });
   });
 
@@ -56,8 +65,14 @@ exports.http = function(callback) {
       callback({statusCode:0, headers:{}, body:message, duration:duration});
   };
 
-  client.on('socket', function() {
+  client.on('socket', function(socket) {
     start = Date.now();
+    timing.queue_wait = start - queue_time;
+    socket.on('connect', function() {
+      var now = Date.now();
+      timing.socket_connected = now;
+      timing.socket_connect = now - start;
+    });
   });
   client.on('error', on_error);
   client.setTimeout(60000, function() {
